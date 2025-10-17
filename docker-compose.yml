@@ -1,0 +1,13 @@
+services:
+  tappplus:
+    build: .
+    image: tappplus:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:/data/dev.db
+      - PORT=3000
+    volumes:
+      - tappplus_data:/data
+volumes:
+  tappplus_data:
