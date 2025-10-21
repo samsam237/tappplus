@@ -10,3 +10,16 @@
     - Configurez un reverse proxy (Nginx)
     - Activez SSL (Let's Encrypt)
     - Changez les secrets JWT
+
+
+
+# Déployer
+    ./deploy.sh
+# Voir les processus (nginx, redis, api, web, worker)
+    docker exec tappplus-app pm2 status
+# Logs Nginx
+    docker exec tappplus-app pm2 logs nginx
+# Test health check
+    curl http://localhost/health
+# Tester l'API
+    curl http://localhost/api/v1/health
