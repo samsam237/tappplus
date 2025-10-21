@@ -89,7 +89,7 @@ module.exports = {
     // ===================================
     {
       name: 'web',
-      script: './apps/web/server.js',
+      script: './apps/web/apps/web/server.js',
       cwd: '/app',
       instances: 1,
       exec_mode: 'fork',

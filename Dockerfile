@@ -91,8 +91,8 @@ COPY --from=build-api /app/node_modules ./node_modules
 
 # Copy built Web (standalone output)
 COPY --from=build-web /app/apps/web/.next/standalone ./apps/web
-COPY --from=build-web /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build-web /app/apps/web/public ./apps/web/public
+COPY --from=build-web /app/apps/web/.next/static ./apps/web/apps/web/.next/static
+COPY --from=build-web /app/apps/web/public ./apps/web/apps/web/public
 
 # Copy PM2 ecosystem config
 COPY ecosystem.config.js ./
