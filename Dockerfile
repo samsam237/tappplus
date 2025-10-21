@@ -106,6 +106,8 @@ RUN chmod +x ./scripts/*.js
 
 # Copy Nginx configuration
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
+# Remove default nginx site to avoid duplicate default_server directive
+RUN rm -f /etc/nginx/sites-enabled/default
 COPY nginx/tappplus.conf /etc/nginx/sites-enabled/tappplus.conf
 
 # Expose only port 80 (Nginx reverse proxy)

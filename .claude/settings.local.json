@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-Content deploy.ps1 -Encoding UTF8 | Select-Object -First 295 | Select-Object -Last 10\")"
     ],
     "deny": [],
     "ask": []
