@@ -1,85 +1,124 @@
-# --- Builder ---
-FROM node:20-alpine AS builder
+# ===================================
+# UNIFIED DOCKERFILE - TappPlus
+# API + Web + Worker + Redis in one container
+# ===================================
+
+# ===================================
+# Stage 1: Base image with dependencies
+# ===================================
+FROM node:18-slim AS base
+
+# Install required system dependencies
+RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
+    redis-server \
+    sqlite3 \
+    nginx \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
 
-# Outils utiles (certifs, openssl pour Prisma, dos2unix pour normaliser, git si besoin)
-RUN apk add --no-cache ca-certificates openssl dos2unix git
+# ===================================
+# Stage 2: Install workspace dependencies
+# ===================================
+FROM base AS dependencies
 
-# 1) Copie des manifests + (éventuel) dossier prisma
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-COPY prisma ./prisma
+# Copy workspace configuration
+COPY package.json package-lock.json* turbo.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
 
-# 2) Réglages npm un peu plus tolérants (réseau)
-ENV npm_config_fetch_retries=5 \
-    npm_config_fetch_retry_maxtimeout=600000 \
-    npm_config_fetch_retry_mintimeout=20000 \
-    npm_config_legacy_peer_deps=true
+# Install all dependencies with retry logic and increased timeout
+RUN npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000 && \
+    npm ci --prefer-offline --no-audit
 
-# 3) Install (avec cache si BuildKit actif)
-#    Lance le build avec: DOCKER_BUILDKIT=1 docker build --progress=plain ...
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f pnpm-lock.yaml ]; then corepack enable && pnpm i --frozen-lockfile; \
-    elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
-    else npm i --no-audit --no-fund; fi
+# ===================================
+# Stage 3: Build API
+# ===================================
+FROM dependencies AS build-api
 
-# 4) Copie du reste du code
-COPY . .
+# Copy API source
+COPY apps/api ./apps/api
 
-# 5) ECRASE ET RÉÉCRIT un schema.prisma SAIN (UTF-8, LF, quotes droits)
-RUN mkdir -p prisma && cat > prisma/schema.prisma <<'PRISMA'
-generator client {
-    provider = "prisma-client-js"
-}
-
-datasource db {
-    provider = "sqlite"
-    url      = env("DATABASE_URL")
-}
-
-model Person {
-    id        String   @id @default(cuid())
-    firstName String
-    lastName  String
-    createdAt DateTime @default(now())
-}
-PRISMA
-
-# 6) Normalisation & affichage pour contrôle
-RUN dos2unix prisma/schema.prisma || true
-RUN echo "==== schema.prisma (head) ====" && nl -ba prisma/schema.prisma | sed -n '1,40p'
-
-# 7) Donner un DATABASE_URL au BUILDER (juste pour validate/generate)
-ENV DATABASE_URL="file:./dev.db"
-
-# 8) Valider puis générer Prisma
-RUN npx prisma validate
+# Generate Prisma client
+WORKDIR /app/apps/api
 RUN npx prisma generate
 
-# 9) Build Next.js
+# Build API
 RUN npm run build
 
-# --- Runner ---
-FROM node:20-alpine AS runner
+# Verify build
+RUN ls -la dist/ && echo "✓ API build successful"
+
+# ===================================
+# Stage 4: Build Web
+# ===================================
+FROM dependencies AS build-web
+
+# Copy Web source
+COPY apps/web ./apps/web
+
+WORKDIR /app/apps/web
+
+# Build Next.js application
+RUN npm run build
+
+# Verify build
+RUN ls -la .next/ && echo "✓ Web build successful"
+
+# ===================================
+# Stage 5: Production Runtime
+# ===================================
+FROM base AS runtime
+
+# Install PM2 globally for process management
+RUN npm install -g pm2
+
 WORKDIR /app
+
+# Create data, logs, and nginx directories
+RUN mkdir -p /app/data /app/logs /etc/nginx/sites-enabled && chmod 777 /app/data /app/logs
+
+# Copy built API
+COPY --from=build-api /app/apps/api/dist ./apps/api/dist
+COPY --from=build-api /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build-api /app/apps/api/package.json ./apps/api/
+COPY --from=build-api /app/node_modules ./node_modules
+
+# Copy built Web (standalone output)
+COPY --from=build-web /app/apps/web/.next/standalone ./apps/web
+COPY --from=build-web /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build-web /app/apps/web/public ./apps/web/public
+
+# Copy PM2 ecosystem config
+COPY ecosystem.config.js ./
+
+# Copy root package.json
+COPY package.json ./
+
+# Copy scripts directory
+COPY scripts ./scripts
+RUN chmod +x ./scripts/*.js
+
+# Copy Nginx configuration
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/tappplus.conf /etc/nginx/sites-enabled/tappplus.conf
+
+# Expose only port 80 (Nginx reverse proxy)
+EXPOSE 80
+
+# Health check via Nginx
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
+
+# Set environment
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-# Valeur finale en prod: base dans le volume /data
-ENV DATABASE_URL="file:/data/dev.db"
-ENV PORT=3000
+ENV DATABASE_URL=file:/app/data/meditache.db
+ENV REDIS_URL=redis://127.0.0.1:6379
 
-# Artifacts
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-
-# Volume data SQLite
-RUN mkdir -p /data
-VOLUME ["/data"]
-
-# Migrations au démarrage puis Next
-CMD ["/bin/sh", "-c", "npx prisma migrate deploy && node node_modules/next/dist/bin/next start -p ${PORT}"]
-EXPOSE 3000
+# Start all processes with PM2
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]

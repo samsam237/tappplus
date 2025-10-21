@@ -1,25 +1,29 @@
 {
-  "name": "tappplus-docker-ready",
+  "name": "tappplus",
+  "version": "1.0.0",
+  "description": "Application web de rappels d'interventions pour médecins - Tapp +",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
-  },
-  "dependencies": {
-    "next": "14.2.3",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@prisma/client": "5.20.0"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "cd apps/api && npx prisma generate",
+    "db:push": "cd apps/api && npx prisma db push",
+    "db:migrate": "cd apps/api && npx prisma migrate dev",
+    "db:studio": "cd apps/api && npx prisma studio",
+    "worker:dev": "cd apps/api && npm run worker:dev"
   },
   "devDependencies": {
-    "prisma": "5.20.0",
-    "typescript": "^5.6.2",
-    "@types/node": "^20.14.12",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.3"
+    "turbo": "^1.10.12",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

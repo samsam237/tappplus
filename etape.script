@@ -1,0 +1,12 @@
+ 1. Testez le build :
+    docker compose build
+2. Lancez l'application :
+    ./deploy.sh --seed
+3. Vérifiez que tout fonctionne :
+    - Frontend : http://localhost:5500
+    - API : http://localhost:5550/api/v1
+4. Créez un utilisateur admin (voir DEPLOYMENT.md)
+5. Pour la production :
+    - Configurez un reverse proxy (Nginx)
+    - Activez SSL (Let's Encrypt)
+    - Changez les secrets JWT
