@@ -13,7 +13,22 @@ const nextConfig = {
   // Nginx proxies to backend at 127.0.0.1:5550
 
   images: {
-    domains: ['localhost'],
+    // Portable image domains configuration
+    // Set IMAGE_DOMAINS env var with comma-separated domains
+    domains: process.env.IMAGE_DOMAINS
+      ? process.env.IMAGE_DOMAINS.split(',').map(d => d.trim())
+      : [],
+    // Allow any domain for development flexibility
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
   },
 
   output: 'standalone',

@@ -4,7 +4,8 @@
   "description": "Interface web pour Tapp +",
   "private": true,
   "scripts": {
-    "dev": "cross-env NEXT_PUBLIC_API_URL=http://localhost:5550 next dev -p 5500",
+    "dev": "next dev -p 5500",
+    "dev:local": "cross-env NEXT_PUBLIC_API_URL=http://localhost:5550 next dev -p 5500",
     "build": "next build",
     "start": "next start -p 5500",
     "lint": "next lint",

@@ -27,10 +27,11 @@ import { NotificationsModule } from './notifications/notifications.module';
       },
     ]),
     
-    // Queue Redis
+    // Queue Redis - Portable configuration
+    // Supports both REDIS_URL and individual REDIS_HOST/PORT/PASSWORD
     BullModule.forRoot({
-      redis: {
-        host: process.env.REDIS_HOST || 'localhost',
+      redis: process.env.REDIS_URL || {
+        host: process.env.REDIS_HOST || '127.0.0.1',
         port: parseInt(process.env.REDIS_PORT || '6379'),
         password: process.env.REDIS_PASSWORD,
       },

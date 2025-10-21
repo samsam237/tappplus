@@ -5,10 +5,12 @@ export class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5550';
-    
+    // Use relative URL for portable deployment across any domain/IP
+    // Nginx reverse proxy handles routing to the backend
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
     this.client = axios.create({
-      baseURL: `${API_BASE_URL}/api/v1`,
+      baseURL: API_BASE_URL ? `${API_BASE_URL}/api/v1` : '/api/v1',
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
