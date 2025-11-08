@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(powershell -Command \"Get-Content deploy.ps1 -Encoding UTF8 | Select-Object -First 295 | Select-Object -Last 10\")"
+      "Bash(powershell -Command \"Get-Content deploy.ps1 -Encoding UTF8 | Select-Object -First 295 | Select-Object -Last 10\")",
+      "Bash(docker login:*)",
+      "Bash(docker --version:*)",
+      "Bash(node -e:*)",
+      "Bash(powershell -Command \"& ''.\\scripts\\generate-secrets.ps1''\")"
     ],
     "deny": [],
     "ask": []

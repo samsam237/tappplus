@@ -226,31 +226,84 @@ docker-compose logs -f postgres
 
 ## 🚀 Déploiement en production
 
-### 1. Configuration production
+### Option 1 : Dockploy (Recommandé)
+
+**Déploiement en 1 clic depuis GitHub avec SSL automatique, zero-downtime et rollback instantané**
+
+```bash
+# 1. Installer Dockploy sur votre serveur
+curl -sSL https://dockploy.com/install.sh | bash
+
+# 2. Accéder à l'interface web
+# http://YOUR_SERVER_IP:3000
+
+# 3. Créer une application depuis GitHub
+# - Repository: https://github.com/YOUR_USERNAME/tappplus
+# - Branche: main
+# - Build: Dockerfile
+# - Importer la configuration: dockploy.json
+
+# 4. Configurer les variables d'environnement
+# Voir .env.example pour les variables requises
+
+# 5. Déployer !
+```
+
+**Documentation complète** : Voir [DOCKPLOY.md](./DOCKPLOY.md) pour le guide détaillé
+
+**Avantages** :
+- Déploiement automatique sur git push
+- SSL Let's Encrypt automatique
+- Zero-downtime deployments
+- Rollback en 1 clic
+- Monitoring intégré
+
+### Option 2 : Docker Compose Manuel
+
+**Pour un contrôle total et des déploiements personnalisés**
+
+#### 1. Configuration production
 ```bash
 # Variables d'environnement sécurisées
 export NODE_ENV=production
 export JWT_SECRET="your-very-secure-secret"
-export DATABASE_URL="postgresql://user:pass@prod-db:5432/meditache"
+export DATABASE_URL="file:/app/data/meditache.db"
+export REDIS_URL="redis://127.0.0.1:6379"
 ```
 
-### 2. Build et déploiement
+#### 2. Build et déploiement
 ```bash
-# Build des images Docker
-docker-compose -f docker-compose.prod.yml build
+# Cloner le repository
+git clone https://github.com/YOUR_USERNAME/tappplus
+cd tappplus
 
-# Déploiement
-docker-compose -f docker-compose.prod.yml up -d
+# Copier et configurer .env
+cp .env.example .env
+nano .env  # Éditer les variables
+
+# Build et déployer
+docker compose build
+docker compose up -d
+
+# Initialiser la base de données
+docker exec tappplus-app node scripts/init-db.js --seed
 ```
 
-### 3. Sauvegardes
+#### 3. Sauvegardes
 ```bash
-# Sauvegarde de la base de données
-docker-compose exec postgres pg_dump -U meditache meditache > backup.sql
+# Sauvegarde de la base de données SQLite
+docker exec tappplus-app sqlite3 /app/data/meditache.db ".backup /app/data/backup-$(date +%Y%m%d).db"
+
+# Copier le backup sur le host
+docker cp tappplus-app:/app/data/backup-$(date +%Y%m%d).db ./backups/
 
 # Restauration
-docker-compose exec -T postgres psql -U meditache meditache < backup.sql
+docker cp ./backups/backup-20250107.db tappplus-app:/app/data/restore.db
+docker exec tappplus-app bash -c "rm -f /app/data/meditache.db && cp /app/data/restore.db /app/data/meditache.db"
+docker compose restart
 ```
+
+**Documentation complète** : Voir [DEPLOYMENT.md](./DEPLOYMENT.md) pour le guide détaillé
 
 ## 🤝 Contribution
 
