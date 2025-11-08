@@ -73,7 +73,7 @@ RUN ls -la .next/ && echo "✓ Web build successful"
 # ===================================
 # Stage 5: Production Runtime
 # ===================================
-FROM base AS runtime
+FROM base AS production
 
 # Install PM2 globally for process management
 RUN npm install -g pm2
